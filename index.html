@@ -1,176 +1,64 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<title>In-vivo / Ex-vivo Cell Registration</title>
+<html><head>
+<meta charset="utf-8">
+<title>4-Modality 3D Viewer</title>
 <style>
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-  :root {
-    --cyan: #00e5ff;
-    --cyan-dim: rgba(0,229,255,0.12);
-    --bar-h: 52px;
-  }
-
-  body {
-    background:#000;
-    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-    overflow: hidden;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  #topbar {
-    height: var(--bar-h);
-    flex-shrink: 0;
-    background: #080808;
-    border-bottom: 1px solid #181818;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    position: relative;
-  }
-
-  #topbar::after {
-    content:'';
-    position:absolute; inset:0;
-    background: repeating-linear-gradient(
-      to bottom, transparent, transparent 2px,
-      rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px
-    );
-    pointer-events:none;
-  }
-
-  .view-label {
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #444;
-    transition: color 0.4s ease, text-shadow 0.4s ease;
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-  }
-  .view-label.active {
-    color: var(--cyan);
-    text-shadow: 0 0 12px rgba(0,229,255,0.6);
-  }
-
-  #toggle-track {
-    position: relative;
-    width: 56px;
-    height: 28px;
-    background: #111;
-    border: 1px solid #2a2a2a;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    flex-shrink: 0;
-  }
-  #toggle-track:hover {
-    border-color: #444;
-    box-shadow: 0 0 0 3px rgba(0,229,255,0.06);
-  }
-  #toggle-track.right {
-    border-color: rgba(0,229,255,0.4);
-    box-shadow: 0 0 0 3px rgba(0,229,255,0.08), 0 0 16px rgba(0,229,255,0.15);
-  }
-
-  #toggle-knob {
-    position: absolute;
-    top: 3px; left: 3px;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: #333;
-    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1),
-                background 0.35s ease,
-                box-shadow 0.35s ease;
-  }
-  #toggle-track.right #toggle-knob {
-    transform: translateX(28px);
-    background: var(--cyan);
-    box-shadow: 0 0 10px rgba(0,229,255,0.7);
-  }
-
-  #viewer-wrap {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
-
-  iframe {
-    position: absolute;
-    inset: 0;
-    width: 100%; height: 100%;
-    border: none;
-    background: #000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.45s ease;
-  }
-  iframe.active {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  #fade {
-    position: absolute; inset: 0;
-    background: #000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.22s ease;
-    z-index: 10;
-  }
-  #fade.show { opacity: 1; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;height:100vh}
+iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:none}
+iframe.hidden{visibility:hidden;pointer-events:none}
+#toggle{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:0;user-select:none}
+#toggle .label{color:#888;font:bold 11px/1 'SF Mono','Fira Code',monospace;letter-spacing:0.05em;transition:color 0.2s}
+#toggle .label.active{color:#fff}
+.switch{position:relative;width:44px;height:22px;margin:0 10px;cursor:pointer;background:#333;border-radius:11px;border:1px solid #555;transition:background 0.3s}
+.switch .knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.4)}
+.switch.on .knob{left:24px}
+.switch.on{background:#335;border-color:#88f}
+#loading{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:101;color:#888;font:11px/1 'SF Mono',monospace;display:none}
+.loader{display:inline-block;width:8px;height:8px;border:2px solid #555;border-top-color:#88f;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-left:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
-</head>
-<body>
-
-<div id="topbar">
-  <span class="view-label active" id="lbl-left">4-Modality</span>
-  <div id="toggle-track">
-    <div id="toggle-knob"></div>
-  </div>
-  <span class="view-label" id="lbl-right">Registration</span>
+</head><body>
+<div id="toggle">
+  <span class="label active" id="lblMod">MODALITY</span>
+  <div class="switch" id="sw" onclick="toggle()"><div class="knob"></div></div>
+  <span class="label" id="lblReg">REGISTRATION</span>
 </div>
-
-<div id="viewer-wrap">
-  <div id="fade"></div>
-  <iframe id="f0" src="dual_v5.html"   class="active" loading="eager"></iframe>
-  <iframe id="f1" src="warped_v5.html"              loading="eager"></iframe>
-</div>
-
+<div id="loading">Loading registration view<span class="loader"></span></div>
+<iframe id="fMod" src="dual_v5.html"></iframe>
+<iframe id="fReg" src="viewer_warped_invivo_3d_v5.html" class="hidden"></iframe>
 <script>
-(function () {
-  const track   = document.getElementById('toggle-track');
-  const frames  = [document.getElementById('f0'), document.getElementById('f1')];
-  const fade    = document.getElementById('fade');
-  const lblL    = document.getElementById('lbl-left');
-  const lblR    = document.getElementById('lbl-right');
+let mode='mod';
+const fMod=document.getElementById('fMod');
+const fReg=document.getElementById('fReg');
+const sw=document.getElementById('sw');
+const lblMod=document.getElementById('lblMod');
+const lblReg=document.getElementById('lblReg');
+const loading=document.getElementById('loading');
 
-  let current = 0;
-  let busy = false;
+// Show loading indicator until registration iframe is ready
+let regReady=false;
+loading.style.display='block';
+fReg.addEventListener('load',()=>{regReady=true;loading.style.display='none';});
+// Also hide loading once modality iframe loads (it loads first)
+fMod.addEventListener('load',()=>{if(!regReady)loading.style.display='block';});
 
-  function switchTo(idx) {
-    if (idx === current || busy) return;
-    busy = true;
-    fade.classList.add('show');
-    setTimeout(function () {
-      frames[current].classList.remove('active');
-      frames[idx].classList.add('active');
-      current = idx;
-      track.classList.toggle('right', current === 1);
-      lblL.classList.toggle('active', current === 0);
-      lblR.classList.toggle('active', current === 1);
-      fade.classList.remove('show');
-      setTimeout(function () { busy = false; }, 250);
-    }, 220);
+function toggle(){
+  if(mode==='mod'){
+    mode='reg';
+    sw.classList.add('on');
+    lblMod.classList.remove('active');
+    lblReg.classList.add('active');
+    fMod.classList.add('hidden');
+    fReg.classList.remove('hidden');
+  } else {
+    mode='mod';
+    sw.classList.remove('on');
+    lblReg.classList.remove('active');
+    lblMod.classList.add('active');
+    fReg.classList.add('hidden');
+    fMod.classList.remove('hidden');
   }
-
-  track.addEventListener('click', function () { switchTo(current === 0 ? 1 : 0); });
-  lblL.addEventListener('click',  function () { switchTo(0); });
-  lblR.addEventListener('click',  function () { switchTo(1); });
-})();
+}
 </script>
-
 </body></html>
